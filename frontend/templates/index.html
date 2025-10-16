@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Healthscope: AI Medical Assistant</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+    /* highlight styling for important words */
+    .hs-highlight{ background: linear-gradient(90deg,#fff3b0,#ffd54d); padding:0 2px; border-radius:2px; }
+        header {
+            background-color: #007bff;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        main {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        h1, h2 { margin-top: 0; }
+        form { margin-bottom: 30px; }
+        input[type="file"] { margin: 10px 0; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover { background-color: #0056b3; }
+        .report-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-left: 5px solid #007bff;
+            background-color: #f1f5f9;
+            border-radius: 5px;
+        }
+        .section-title { font-weight: bold; margin-bottom: 10px; }
+        .disclaimer { font-size: 0.9em; color: #555; margin-top: 20px; }
+        pre { white-space: pre-wrap; }
+        #scan-progress, #dynamic-status {
+            display: none;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #toggle-bar {
+            display: none;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .toggle-btn {
+            margin-right: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .toggle-btn:hover {
+            background-color: #0056b3;
+        }
+        #agent-boards, #final-board {
+            display: none;
+        }
+        @media (max-width: 600px) {
+            main {
+                padding: 8px;
+            }
+            .report-section {
+                padding: 8px;
+            }
+            h1 {
+                font-size: 1.3em;
+            }
+            h2 {
+                font-size: 1.1em;
+            }
+        }
+    /* Chat message styling */
+    #chat-window .chat-msg { display:flex; margin:6px 0; max-width:85%; }
+    #chat-window .chat-bot { justify-content:flex-start; }
+    #chat-window .chat-user { justify-content:flex-end; margin-left:auto; }
+    .chat-bubble { padding:8px 12px; border-radius:12px; background:#e9ecef; }
+    .chat-bubble.user { background:#0d6efd; color:#fff; }
+    .chat-bubble.bot { background:#f1f3f5; color:#000; }
+    /* typing indicator */
+    .typing { display:flex; align-items:center; gap:6px; }
+    .dot { width:8px; height:8px; background:#b9c1d9; border-radius:50%; opacity:0.6; animation: blink 1s infinite; }
+    .dot:nth-child(2){ animation-delay:0.2s } .dot:nth-child(3){ animation-delay:0.4s }
+    @keyframes blink { 0%{opacity:0.2}50%{opacity:1}100%{opacity:0.2} }
+
+        /* Dashboard tab styles */
+        #dashboardTabs .nav-link {
+            border: 1px solid transparent;
+            border-radius: 8px;
+            padding: 8px 14px;
+            margin-right: 8px;
+            color: #11447a; /* darker blue for label */
+            background: transparent;
+            transition: background-color 150ms ease, color 150ms ease, transform 80ms ease;
+        }
+        #dashboardTabs .nav-link:hover {
+            background: #e6f0ff; /* soft blue hover */
+            color: #07386a;
+            transform: translateY(-1px);
+            text-decoration: none;
+        }
+        #dashboardTabs .nav-link.active {
+            background: #0d6efd; /* bootstrap primary */
+            color: #ffffff !important;
+            box-shadow: 0 4px 10px rgba(13,110,253,0.12);
+        }
+        #dashboardTabs { gap: 6px; display:flex; align-items:center; }
+
+        /* Scan button styling to match tabs */
+        #scan-report-btn {
+            border-radius: 8px;
+            padding: 8px 14px;
+            background: linear-gradient(180deg,#0d6efd,#0b5ed7);
+            color: white;
+            border: none;
+        }
+        #scan-report-btn:hover { background: linear-gradient(180deg,#0b5ed7,#084ea6); }
+        /* Recent sessions popover styles (three-dot menu) */
+        .session-popover { min-width:160px; z-index:50; }
+        .session-popover .popover-item { display:flex; align-items:center; gap:8px; padding:8px 10px; cursor:pointer; border-radius:6px; }
+        .session-popover .popover-item:hover { background:#f6f7fb; }
+        .session-popover .pi-icon { width:22px; text-align:center; color:#6b7280; }
+        .session-popover .pi-label { flex:1; font-size:0.95em; color:#111827; }
+    </style>
+    <style>
+        /* Results two-column layout */
+        #result-container { display:flex; gap:16px; margin-top:12px; }
+        #agent-boards { flex: 1 1 48%; }
+        #final-board { flex: 1 1 48%; }
+        /* Doctor panel improvements */
+        #doctor-panel .report-section { background: linear-gradient(180deg,#ffffff,#fbfdff); box-shadow: 0 6px 18px rgba(13,110,253,0.06); }
+        #doctor-panel input, #doctor-panel textarea { border:1px solid #dfe7f7; padding:8px; border-radius:6px; }
+        #doctor-panel .btn { background:#0d6efd; color:#fff; border:none; padding:8px 12px; border-radius:6px; }
+        #doctor-panel .btn:hover { background:#0b5ed7; }
+        @media (max-width:900px){ #result-container { flex-direction:column; } }
+    </style>
+    <style>
+        /* Doctor sign-in card style (simple centered box) */
+        #doctor-panel .auth-card { max-width:560px; margin:12px auto; padding:18px; border-radius:10px; background:#fff; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
+        #doctor-panel .auth-row { display:flex; gap:8px; align-items:center; }
+        #doctor-panel .auth-row input { padding:10px; border:1px solid #e6eefc; border-radius:6px; }
+        #doctor-panel .primary-btn { background:#0d6efd; color:#fff; border:none; padding:10px 14px; border-radius:6px; }
+    </style>
+</head>
+<body>
+    <header>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h1 style="margin:0">Healthscope: AI Medical Assistant</h1>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <label for="lang-select" style="color:white; margin-right:6px;">Language</label>
+                <select id="lang-select" name="lang" form="upload-form" style="padding:6px; border-radius:6px; border:none;"> 
+                    <option value="en">English</option>
+                    <option value="hi">Hindi</option>
+                </select>
+                <!-- Help button: shows agent focuses -->
+                <button id="help-focus-btn" title="Help: what each agent focuses on" style="padding:6px 10px; border-radius:6px; border:none; background:rgba(255,255,255,0.15); color:#fff;">Help</button>
+            </div>
+        </div>
+    </header>
+    <main>
+        <!-- Dashboard Tabs -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <ul class="nav nav-tabs" id="dashboardTabs" role="tablist" style="flex:1">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="patient-tab" data-bs-toggle="tab" type="button" role="tab">Patient</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="doctor-tab" data-bs-toggle="tab" type="button" role="tab">Doctor</button>
+                </li>
+            </ul>
+            <div style="margin-left:16px; display:flex; gap:8px; align-items:center">
+                <button id="scan-report-btn" class="btn btn-outline-primary">Scan Report</button>
+                <button id="header-doctor-summary-btn" class="btn btn-outline-success" style="display:none">AI Summary</button>
+            </div>
+            </div>
+        </div>
+
+        <div>
+            <!-- Main content -->
+            <div>
+
+    <!-- Patient panel (chatbot + upload) -->
+    <div id="patient-panel">
+    <!-- Symptom Checker Chatbot UI -->
+    <div id="symptom-chat-section" style="margin-bottom:30px;">
+            <h2>Chatbot Symptom Checker</h2>
+            <div id="chat-window" style="height:220px; overflow-y:auto; background:#f8f9fa; border:1px solid #ccc; border-radius:6px; padding:10px; margin-bottom:10px;"></div>
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="chat-input" placeholder="Describe your symptoms..." style="flex:1; padding:8px; border-radius:4px; border:1px solid #ccc;">
+                <button type="button" id="send-chat" style="padding:8px 16px;">Send</button>
+                <button type="button" id="get-summary" style="padding:8px 16px; background:#28a745; color:white;">Get Summary</button>
+                <button type="button" id="clear-chat" style="padding:8px 16px; background:#dc3545; color:white;">Clear</button>
+            </div>
+            <div id="summary-box" style="margin-top:12px; display:none; background:#e9f7ef; border:1px solid #28a745; border-radius:6px; padding:10px;"></div>
+        </div>
+        {% if error %}
+        <p style="color:red;">{{ error }}</p>
+        {% endif %}
+
+        <div id="upload-container" style="display:none;">
+            <form id="upload-form" action="/" method="post" enctype="multipart/form-data">
+                <label for="report-file">Select Patient Report (PDF, TXT, PNG, JPG):</label>
+                <input type="file" name="report" id="report-file" accept=".pdf,.txt,.png,.jpg,.jpeg,image/*" required>
+                <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+                    <button type="button" id="analyze-btn" class="btn btn-success">Analyze</button>
+                    <select id="specialist-select" style="padding:6px; border-radius:6px;">
+                        <option value="">-- Specialist --</option>
+                        <option value="cardiology">Cardiologist</option>
+                        <option value="psychology">Psychologist</option>
+                        <option value="pulmonology">Pulmonologist</option>
+                        <option value="dermatology">Dermatologist</option>
+                        <option value="endocrinology">Endocrinologist</option>
+                        <option value="gastroenterology">Gastroenterologist</option>
+                        <option value="general_physician">General Physician</option>
+                        <option value="hematology">Hematologist</option>
+                        <option value="nephrology">Nephrologist</option>
+                        <option value="radiology">Radiologist</option>
+                    </select>
+                    <button type="button" id="specialist-btn" class="btn btn-outline-primary">Get Specialist Opinion</button>
+                </div>
+            </form>
+        </div>
+        <!-- Patient Scan Dashboard: when patient clicks Scan Report, we show this and move the upload/result nodes into it -->
+        <div id="patient-scan-dashboard" style="display:none; margin-top:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3>Scan Report</h3>
+                <div><button id="patient-scan-back" class="btn btn-sm">Back</button></div>
+            </div>
+            <div id="patient-scan-dashboard-content" style="margin-top:12px;">
+                <form id="patient-upload-form" enctype="multipart/form-data">
+                    <label for="patient-report-file">Choose File (PDF, TXT, PNG, JPG):</label>
+                    <input type="file" id="patient-report-file" name="report" accept=".pdf,.txt,.png,.jpg,.jpeg,image/*" required />
+                        <div style="margin-top:8px; display:flex; gap:8px;">
+                        <button type="submit" id="patient-analyze-btn" class="btn btn-primary">Analyze</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+            
+            <!-- Agent outputs and final report appear here for patient after scanning -->
+            <div id="result-container" style="display:none;">
+            <div id="final-board" style="display:block; margin-top:0;">
+                <h2>Final Diagnostic Report</h2>
+                <div class="report-section">
+                    <div id="doctor-output-title" class="section-title">Doctor Output (Aggregator)</div>
+                    <div id="final-exec-summary" style="white-space:pre-wrap;"></div>
+                </div>
+                <div class="report-section">
+                    <div id="agent-output-title" class="section-title">Agent Output</div>
+                    <div id="specialist-paragraph" style="margin-bottom:10px; white-space:pre-wrap;"></div>
+                    <ul id="specialist-points"></ul>
+                </div>
+                <!-- Disclaimer removed as requested -->
+            </div>
+            </div>
+
+        </div>
+
+        <!-- Patient Summary Dashboard: used when patient requests chat summary -->
+        <div id="patient-summary-dashboard" style="display:none; margin-top:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3>Chat Summary</h3>
+                <div><button id="patient-summary-back" class="btn btn-sm">Back</button></div>
+            </div>
+            <div id="patient-summary-dashboard-content" style="margin-top:12px; white-space:pre-wrap;"></div>
+        </div>
+
+        <!-- Doctor panel (login/signup + multi-upload) -->
+        <div id="doctor-panel" style="display:block; margin-top:20px;">
+            <h2>Doctor / Clinician Mode</h2>
+
+            <!-- Doctor controls (shown immediately when Doctor tab is opened) -->
+            <div id="doctor-controls" style="display:block; margin-top:12px;">
+                    <div class="report-section">
+                    <div class="section-title">Upload Multiple Patient Cases</div>
+                    <input id="doctor-files" type="file" multiple accept=".pdf,.txt,.png,.jpg,.jpeg,image/*" />
+                    <button id="doctor-upload" class="btn" style="margin-left:8px;">Upload & Analyze</button>
+                    <div id="doctor-cases" style="margin-top:12px;"></div>
+                    <!-- In-panel AI Summary button removed; header AI Summary triggers the summary dashboard -->
+                </div>
+            </div>
+
+            <!-- Doctor Summary Dashboard: shown when user requests summary -->
+            <div id="doctor-summary-dashboard" style="display:none; margin-top:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3>AI Summary</h3>
+                    <div><button id="doctor-summary-back" class="btn btn-sm">Back</button></div>
+                </div>
+                <div id="doctor-summary-dashboard-content" style="margin-top:14px; white-space:pre-wrap;"></div>
+            </div>
+
+            <!-- Auth modal removed: Doctor UI simplified to Upload & Analyze only -->
+        </div>
+
+        <div id="scan-progress" style="display:none; text-align:center; margin-bottom:20px;">
+            <div id="dynamic-message" style="font-size:1.2em; color:#007bff;">🔎 Scanning report...</div>
+        </div>
+
+        <div id="toggle-bar">
+            <button type="button" id="show-agents" class="toggle-btn">Agent Outputs</button>
+            <button type="button" id="show-final" class="toggle-btn">Final Report</button>
+        </div>
+
+        <!-- Agent outputs removed to simplify UI: final report only is shown below -->
+
+        <script>
+        // --- Auth modal wiring ---
+        // Simple doctor verification (demo): submit name+phone+optional proof file to /doctor/verify
+        document.getElementById('verify-submit')?.addEventListener('click', async function(){
+            const name = document.getElementById('verify-name').value.trim();
+            const phone = document.getElementById('verify-phone').value.trim();
+            const fileEl = document.getElementById('verify-proof');
+            if(!phone || !name) return alert('Enter name and phone');
+            try{
+                const fd = new FormData(); fd.append('name', name); fd.append('phone', phone);
+                if (fileEl && fileEl.files && fileEl.files[0]) fd.append('proof', fileEl.files[0]);
+                const res = await fetch('/doctor/verify', { method:'POST', body: fd });
+                const j = await res.json(); if(!res.ok){ alert(j.error||'Verification failed'); return; }
+                // show doctor controls and navigate to Doctor dashboard
+                localStorage.setItem('doctor_token', j.token || '');
+                document.getElementById('doc-welcome').innerText = 'Welcome '+(j.phone||phone);
+                document.getElementById('doctor-controls').style.display = 'block';
+                // hide the verification form (the first report-section within doctor panel)
+                try {
+                    const verifySection = document.querySelector('#doctor-panel .report-section');
+                    if (verifySection) verifySection.style.display = 'none';
+                } catch(e){}
+                // switch to Doctor tab
+                try { document.getElementById('doctor-tab').click(); } catch(e){}
+                // focus the doctor file input
+                try { const df = document.getElementById('doctor-files'); if (df) df.focus(); df && df.scrollIntoView({behavior: 'smooth', block: 'center'}); } catch(e){}
+                alert('Verified (demo). Doctor dashboard is ready for uploads.');
+            }catch(e){ alert('Verify request failed: ' + String(e)); }
+        });
+
+    // logout removed
+
+        // --- Symptom Checker Chatbot JS ---
+    // Translations for UI strings
+    const TRANSLATIONS = {
+        en: {
+            title: 'Healthscope: AI Medical Assistant',
+            languageLabel: 'Language',
+            patient: 'Patient',
+            doctor: 'Doctor',
+            scanReport: 'Scan Report',
+            chatHeader: 'Chatbot Symptom Checker',
+            send: 'Send',
+            getSummary: 'Get Summary',
+            clear: 'Clear',
+            uploadLabel: 'Select Patient Report (PDF or Text):',
+            uploadButton: 'Analyze',
+            backToChat: 'Back to Chat',
+            dashboard: {
+                title: 'Chat Dashboard',
+                loadAll: 'Load All',
+                close: 'Close',
+                openInChat: 'Open in Chat'
+            },
+            agentOutputs: 'Agent Outputs',
+            finalReport: 'Final Diagnostic Report',
+            doctor: { title: 'Doctor Mode', uploadMultiple: 'Upload Multiple Patient Cases', summary: 'Generate AI Summary of Selected Cases' },
+            menu: { view: 'View', share: 'Share', rename: 'Rename', archive: 'Archive', delete: 'Delete' },
+            help: 'Help',
+            typingFallback: 'Bot is typing...'
+        },
+        hi: {
+            title: 'हेल्थस्कोप: एआई मेडिकल असिस्टेंट',
+            languageLabel: 'भाषा',
+            patient: 'रुग्ण',
+            doctor: 'डॉक्टर',
+            scanReport: 'रिपोर्ट स्कैन करें',
+            chatHeader: 'चैटबॉट लक्षण जाँच',
+            send: 'भेजें',
+            getSummary: 'सार प्राप्त करें',
+            clear: 'साफ़ करें',
+            uploadLabel: 'रुग्ण रिपोर्ट चुनें (PDF या टेक्स्ट):',
+            uploadButton: 'विश्लेषण करें',
+            backToChat: 'चैट पर वापस जाएं',
+            dashboard: {
+                title: 'चैट डैशबोर्ड',
+                loadAll: 'सभी लोड करें',
+                close: 'बंद करें',
+                openInChat: 'चैट में खोलें'
+            },
+            agentOutputs: 'एजेंट आउटपुट',
+            finalReport: 'अंतिम निदान रिपोर्ट',
+            doctor: { title: 'डॉक्टर मोड', uploadMultiple: 'कई रोगी मामलों को अपलोड करें', summary: 'चयनित मामलों का AI सार उत्पन्न करें' },
+            menu: { view: 'देखें', share: 'साझा करें', rename: 'नाम बदलें', archive: 'आर्काइव', delete: 'हटाएँ' },
+            help: 'मदद',
+            typingFallback: 'बॉट उत्तर दे रहा है...'
+        },
+        gu: {
+            title: 'હેલ્થસ્કોપ: એઆઇ મેડિકલ સહાયક',
+            languageLabel: 'ભાષા',
+            patient: 'પેશન્ટ',
+            doctor: 'ડૉક્ટર',
+            scanReport: 'રિપોર્ટ સ્કેન કરો',
+            chatHeader: 'ચેટબોટ લક્ષણ ચેકર',
+            send: 'ભેજો',
+            getSummary: 'સારાંશ મેળવો',
+            clear: 'સાફ કરો',
+            uploadLabel: 'પેશન્ટ રિપોર્ટ પસંદ કરો (PDF અથવા ટેક્સ્ટ):',
+            uploadButton: 'વિશ્લેષણ કરો',
+            backToChat: 'ચેટ પર પાછા જાઓ',
+            dashboard: {
+                title: 'ચેટ ડેશબોર્ડ',
+                loadAll: 'બધા લોડ કરો',
+                close: 'બંધ કરો',
+                openInChat: 'ચેટમાં ખોલો'
+            },
+            agentOutputs: 'એજન્ટ આઉટપુટ્સ',
+            finalReport: 'અંતિમ નિદાન રિપોર્ટ',
+            doctor: { title: 'ડૉક્ટર મોડ', uploadMultiple: 'બહુ પેશન્ટ કેસ અપલોડ કરો', summary: 'પસંદ કરેલા કેસોનું AI સાર બનાવો' },
+            menu: { view: 'જુઓ', share: 'શેર કરો', rename: 'નામ બદલાવો', archive: 'આર્કાઇવ', delete: 'ડિલીટ' },
+            typingFallback: 'બોટ જવાબ આપી રહ્યો છે...'
+        }
+    };
+
+    function t(key){
+        const lang = (document.getElementById('lang-select')||{value:'en'}).value || 'en';
+        const parts = key.split('.');
+        let cur = TRANSLATIONS[lang] || TRANSLATIONS.en;
+        for (const p of parts){ if (cur[p]===undefined) return key; cur = cur[p]; }
+        return cur;
+    }
+    // Help translations (plain-language descriptions for non-doctors)
+    const HELP_TEXT = {
+        en: {
+            title: 'Agent focuses (what each specialist looks for)',
+            cardiology: 'Heart: checks chest pain, shortness of breath, palpitations and heart-related risks in simple terms.',
+            psychology: 'Mental health: looks for mood, anxiety, sleep problems and suggests supportive steps.',
+            pulmonology: 'Lungs: evaluates cough, breathlessness and suggests basic tests and next steps.',
+            dermatology: 'Skin: examines rashes, spots and suggests simple care or referral.',
+            endocrinology: 'Hormones: checks for thyroid, diabetes or other hormonal concerns and suggests next steps.',
+            gastroenterology: 'Stomach & gut: looks at abdominal pain, digestion issues and red-flag signs.',
+            general_physician: 'General care: broad first look to triage problems and suggest next steps.',
+            hematology: 'Blood: reads blood test numbers and points out important abnormalities in plain language.',
+            nephrology: 'Kidneys: checks kidney function markers and alerts if urgent attention is needed.',
+            radiology: 'Imaging: reads scan findings and highlights important observations.'
+        },
+        hi: {
+            title: 'एजेंट फोकस (प्रत्येक विशेषज्ञ क्या देखता है)',
+            cardiology: 'दिल: सीने में दर्द, सांस फूलना, धड़कन और दिल से जुड़े जोखिम को आसान शब्दों में जांचता है।',
+            psychology: 'मानसिक स्वास्थ्य: मूड, चिंता, नींद की समस्याओं को देखता है और सहायक कदम सुझाता है।',
+            pulmonology: 'फेफड़े: खांसी, सांस की तकलीफ का आकलन करता है और बुनियादी परीक्षण/अगले कदम सुझाता है।',
+            dermatology: 'त्वचा: दाग-धब्बे और चकत्तों की जाँच करता है और सरल देखभाल या रेफ़रल सुझाता है।',
+            endocrinology: 'हार्मोन: थायरॉयड, मधुमेह या अन्य हार्मोनल समस्याओं की जांच करता है और अगले कदम बताता है।',
+            gastroenterology: 'पेट और पाचन: पेट दर्द, पाचन समस्याओं और चेतावनी संकेतों की जाँच करता है।',
+            general_physician: 'सामान्य देखभाल: समस्याओं की प्राथमिक जाँच और अगले कदम सुझाता है।',
+            hematology: 'रक्त: रक्त परीक्षण के नतीजों को पढ़कर महत्वपूर्ण असामान्यताओं की तरफ़ ध्यान दिलाता है।',
+            nephrology: 'किडनी: गुर्दे के फ़ंक्शन संकेतकों की जाँच करता है और आपात स्थिति के लिए सतर्क करता है।',
+            radiology: 'इमेजिंग: स्कैन निष्कर्ष पढ़ता है और महत्वपूर्ण बातें उजागर करता है।'
+        }
+    };
+    const chatWindow = document.getElementById('chat-window');
+        const chatInput = document.getElementById('chat-input');
+        const sendChatBtn = document.getElementById('send-chat');
+        const getSummaryBtn = document.getElementById('get-summary');
+        const clearChatBtn = document.getElementById('clear-chat');
+        const summaryBox = document.getElementById('summary-box');
+    let chatSessionId = null; // persisted session id returned from server
+
+    // Apply translations to static UI elements
+    function applyTranslations(){
+        const lang = (document.getElementById('lang-select')||{value:'en'}).value || 'en';
+        document.querySelector('header h1').textContent = t('title');
+        // header label
+        const label = document.querySelector('label[for="lang-select"]'); if (label) label.textContent = t('languageLabel');
+    document.getElementById('patient-tab').textContent = t('patient');
+    // doctor translations are nested under doctor.title; use that to avoid assigning an object to textContent
+    document.getElementById('doctor-tab').textContent = t('doctor.title');
+        document.getElementById('scan-report-btn').textContent = t('scanReport');
+        document.querySelector('#symptom-chat-section h2').textContent = t('chatHeader');
+        document.getElementById('send-chat').textContent = t('send');
+        document.getElementById('get-summary').textContent = t('getSummary');
+        document.getElementById('clear-chat').textContent = t('clear');
+        const upl = document.querySelector('label[for="report-file"]'); if (upl) upl.textContent = t('uploadLabel');
+        const uplbtn = document.querySelector('#analyze-btn'); if (uplbtn) uplbtn.textContent = t('uploadButton');
+    // back-to-chat button removed from UI
+        const agentHdr = document.querySelector('#result-container #agent-boards h2') || document.querySelector('#agent-boards h2'); if (agentHdr) agentHdr.textContent = t('agentOutputs');
+        const finalHdr = document.querySelector('#result-container #final-board h2') || document.querySelector('#final-board h2'); if (finalHdr) finalHdr.textContent = t('finalReport');
+        const docTitle = document.querySelector('#doctor-panel h2'); if (docTitle) docTitle.textContent = t('doctor.title');
+        const docUpload = document.getElementById('doctor-upload'); if (docUpload) docUpload.textContent = t('doctor.uploadMultiple');
+        const docSummary = document.getElementById('doctor-summary'); if (docSummary) docSummary.textContent = t('doctor.summary');
+        // help button label
+        const helpBtn = document.getElementById('help-focus-btn'); if (helpBtn) { helpBtn.textContent = t('help') || 'Help'; helpBtn.title = t('help') || 'Help'; }
+    }
+
+    document.getElementById('lang-select').addEventListener('change', ()=>{ applyTranslations(); });
+    // Apply translations once on load so Help button label is correct
+    try{ applyTranslations(); } catch(e){}
+
+        function appendMessage(sender, text) {
+            const wrapper = document.createElement('div');
+            wrapper.classList.add('chat-msg');
+            const bubble = document.createElement('div');
+            bubble.classList.add('chat-bubble');
+            if (sender === 'You' || sender === 'User') {
+                wrapper.classList.add('chat-user');
+                bubble.classList.add('user');
+            } else {
+                wrapper.classList.add('chat-bot');
+                bubble.classList.add('bot');
+            }
+            bubble.textContent = text;
+            wrapper.appendChild(bubble);
+            chatWindow.appendChild(wrapper);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        sendChatBtn.onclick = async function() {
+            const msg = chatInput.value.trim();
+            if (!msg) return;
+            appendMessage('You', msg);
+            chatInput.value = '';
+            summaryBox.style.display = 'none';
+            showTypingIndicator();
+            // Send to backend
+            const res = await fetch('/symptom_chat_api', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: msg, lang: getSelectedLang(), session_id: chatSessionId })
+            });
+            let data;
+            try {
+                data = await res.json();
+            } catch (e) {
+                hideTypingIndicator();
+                appendMessage('Bot', 'No response from server.');
+                return;
+            }
+            const botText = data.reply || data.response || data.error || JSON.stringify(data) || 'No reply';
+            // Save session id if backend provided one
+            if (data.session_id) chatSessionId = data.session_id;
+            hideTypingIndicator();
+            appendMessage('Bot', botText);
+        };
+
+        function showTypingIndicator(){
+            const wrapper = document.createElement('div'); wrapper.id='typing-indicator'; wrapper.classList.add('chat-msg','chat-bot');
+            const bubble = document.createElement('div'); bubble.classList.add('chat-bubble');
+            const t = document.createElement('div'); t.className='typing'; t.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+            bubble.appendChild(t); wrapper.appendChild(bubble); chatWindow.appendChild(wrapper); chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        function hideTypingIndicator(){ const el = document.getElementById('typing-indicator'); if (el) el.remove(); }
+
+        // Enter key sends message (Shift+Enter for newline)
+        chatInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendChatBtn.click();
+            }
+        });
+
+        getSummaryBtn.onclick = async function() {
+            if (!chatSessionId) {
+                appendMessage('Bot', 'No active chat session. Please send a message first.');
+                return;
+            }
+            const res = await fetch('/symptom_summary_api', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: chatSessionId, lang: getSelectedLang() })
+            });
+            let data;
+            try {
+                data = await res.json();
+            } catch (e) {
+                appendMessage('Bot', 'Failed to get summary.');
+                return;
+            }
+            if (data.error) {
+                appendMessage('Bot', `Summary error: ${data.error}`);
+                return;
+            }
+            // show patient summary in a separate dashboard
+            const summaryText = data.summary || data.structured_history || 'No summary available.';
+            const dash = document.getElementById('patient-summary-dashboard');
+            const dashContent = document.getElementById('patient-summary-dashboard-content');
+            dashContent.textContent = summaryText;
+            dash.style.display = 'block';
+            // hide chat window
+            const chatSection = document.getElementById('symptom-chat-section');
+            if (chatSection) chatSection.style.display = 'none';
+            // wire back button
+            const psBack = document.getElementById('patient-summary-back');
+            if (psBack) psBack.onclick = function(){ dash.style.display = 'none'; if (chatSection) chatSection.style.display = 'block'; };
+        };
+
+        clearChatBtn.onclick = async function() {
+            await fetch('/symptom_clear_api', { method: 'POST' });
+            chatWindow.innerHTML = '';
+            summaryBox.style.display = 'none';
+            chatSessionId = null;
+        };
+        // Dynamic frontend: scanning, upload, and toggling
+        const fileInput = document.getElementById('report-file');
+        const scanProgress = document.getElementById('scan-progress');
+        const toggleBar = document.getElementById('toggle-bar');
+        const agentBoards = document.getElementById('agent-boards');
+        const finalBoard = document.getElementById('final-board');
+        const showAgentsBtn = document.getElementById('show-agents');
+        const showFinalBtn = document.getElementById('show-final');
+        const uploadForm = document.getElementById('upload-form');
+        const dynamicStatus = document.getElementById('dynamic-status');
+        const dynamicMessage = document.getElementById('dynamic-message');
+
+        // Show scanning only on form submit
+        uploadForm.addEventListener('submit', function() {
+            scanProgress.style.display = 'block';
+        });
+
+        // Back to Chat button removed from UI; no handler required.
+
+        function getSelectedLang(){
+            const el = document.getElementById('lang-select'); return el ? el.value : 'en';
+        }
+
+        // Toggle logic
+        if (showAgentsBtn && showFinalBtn) {
+            showAgentsBtn.onclick = function() {
+                const ab = document.getElementById('agent-boards'); if (ab) ab.style.display = 'block';
+                finalBoard.style.display = 'none';
+                showAgentsBtn.style.backgroundColor = '#007bff';
+                showFinalBtn.style.backgroundColor = '#ccc';
+            };
+            showFinalBtn.onclick = function() {
+                const ab = document.getElementById('agent-boards'); if (ab) ab.style.display = 'none';
+                finalBoard.style.display = 'block';
+                showFinalBtn.style.backgroundColor = '#007bff';
+                showAgentsBtn.style.backgroundColor = '#ccc';
+            };
+        }
+
+        // Tab and scan button behavior
+        window.addEventListener('DOMContentLoaded', function() {
+            const patientTab = document.getElementById('patient-tab');
+            const doctorTab = document.getElementById('doctor-tab');
+            const patientPanel = document.getElementById('patient-panel');
+            const doctorPanel = document.getElementById('doctor-panel');
+            const scanBtn = document.getElementById('scan-report-btn');
+            const uploadContainer = document.getElementById('upload-container');
+
+            function showPatient() {
+                patientPanel.style.display = 'block';
+                doctorPanel.style.display = 'none';
+                patientTab.classList.add('active');
+                doctorTab.classList.remove('active');
+                // header buttons: show scan report, hide doctor summary
+                try { document.getElementById('scan-report-btn').style.display = 'inline-block'; } catch(e){}
+                try { document.getElementById('header-doctor-summary-btn').style.display = 'none'; } catch(e){}
+                // hide any previous scan results so they don't appear below the chatbot
+                try { const resEl = document.getElementById('result-container'); if (resEl) resEl.style.display = 'none'; } catch(e){}
+                try { const agentBoards = document.getElementById('agent-boards'); if (agentBoards) agentBoards.style.display = 'none'; } catch(e){}
+                try { const finalBoard = document.getElementById('final-board'); if (finalBoard) finalBoard.style.display = 'none'; } catch(e){}
+            }
+            function showDoctor() {
+                patientPanel.style.display = 'none';
+                doctorPanel.style.display = 'block';
+                doctorTab.classList.add('active');
+                patientTab.classList.remove('active');
+                // Ensure doctor controls visible and pre-focus file input
+                try{
+                    const docControls = document.getElementById('doctor-controls');
+                    if(docControls) docControls.style.display = 'block';
+                    const token = localStorage.getItem('doctor_token');
+                    if(token){
+                        document.getElementById('doc-welcome').innerText = 'Welcome doctor';
+                    } else {
+                        document.getElementById('doc-welcome').innerText = '';
+                    }
+                    const df = document.getElementById('doctor-files'); if(df){ df.focus(); df.scrollIntoView({behavior:'smooth', block:'center'}); }
+                }catch(e){ /* ignore */ }
+                // header buttons: hide scan report, show doctor summary
+                try { document.getElementById('scan-report-btn').style.display = 'none'; } catch(e){}
+                try { document.getElementById('header-doctor-summary-btn').style.display = 'inline-block'; } catch(e){}
+            }
+
+            patientTab.addEventListener('click', showPatient);
+            doctorTab.addEventListener('click', showDoctor);
+
+            // Chatbot visible by default; scan button now opens a dedicated patient scan dashboard
+            scanBtn.addEventListener('click', function() {
+                const chatSection = document.getElementById('symptom-chat-section');
+                const scanDash = document.getElementById('patient-scan-dashboard');
+                const scanContent = document.getElementById('patient-scan-dashboard-content');
+                const uploadContent = document.getElementById('upload-container');
+                const results = document.getElementById('result-container');
+                // move upload container and result container into the scan dashboard
+                // But first remember original parent and nextSibling so we can restore exactly
+                scanContent.innerHTML = '';
+                if (uploadContent) {
+                    try {
+                        if (!uploadContent._origParent) {
+                            uploadContent._origParent = uploadContent.parentNode;
+                            uploadContent._origNext = uploadContent.nextSibling;
+                        }
+                    } catch (e) { /* ignore */ }
+                    scanContent.appendChild(uploadContent);
+                    // make sure the moved upload container is visible inside the dashboard
+                    try { uploadContent.style.display = 'block'; } catch(e){}
+                }
+                if (results) {
+                    try {
+                        if (!results._origParent) {
+                            results._origParent = results.parentNode;
+                            results._origNext = results.nextSibling;
+                        }
+                    } catch(e){}
+                    scanContent.appendChild(results);
+                    // results area should be hidden by default until populate; keep layout as flex when shown
+                    try { results.style.display = 'none'; } catch(e){}
+                }
+                scanDash.style.display = 'block';
+                if (chatSection) chatSection.style.display = 'none';
+            });
+
+            // patient scan back: restore upload container location and hide dashboard
+            const patientScanBack = document.getElementById('patient-scan-back');
+            if (patientScanBack) patientScanBack.addEventListener('click', function(){
+                const scanDash = document.getElementById('patient-scan-dashboard');
+                const uploadContent = document.getElementById('upload-container');
+                const chatSection = document.getElementById('symptom-chat-section');
+                // Restore uploadContent to its original location if possible
+                try {
+                    if (uploadContent && uploadContent._origParent) {
+                        const parent = uploadContent._origParent;
+                        const next = uploadContent._origNext;
+                        parent.insertBefore(uploadContent, next);
+                        // clear stored refs
+                        uploadContent._origParent = null;
+                        uploadContent._origNext = null;
+                    } else if (chatSection && uploadContent) {
+                        // fallback: place uploadContent back below chatSection
+                        chatSection.parentNode.insertBefore(uploadContent, chatSection.nextSibling);
+                    }
+                    try { uploadContent.style.display = 'block'; } catch(e){}
+                    // also restore results container to its original place if we moved it
+                    try {
+                        const resultsEl = document.getElementById('result-container');
+                        if (resultsEl && resultsEl._origParent) {
+                            const rParent = resultsEl._origParent;
+                            const rNext = resultsEl._origNext;
+                            rParent.insertBefore(resultsEl, rNext);
+                            resultsEl._origParent = null;
+                            resultsEl._origNext = null;
+                        }
+                    } catch(e){}
+                } catch (e) {
+                    // fallback behavior
+                    try { if (chatSection && uploadContent) chatSection.parentNode.insertBefore(uploadContent, chatSection.nextSibling); } catch(e){}
+                }
+                scanDash.style.display = 'none';
+                if (chatSection) chatSection.style.display = 'block';
+            });
+
+            // initial state
+            showPatient();
+            // update final report headings based on selected language
+            (function updateFinalHeadings(){
+                const uiLang = getSelectedLang();
+                if (uiLang === 'hi'){
+                    document.querySelectorAll('#final-board .section-title').forEach(el=>{
+                        if (el.textContent.trim()==='Executive Summary') el.textContent='कार्यकारी सारांश';
+                        if (el.textContent.trim()==='Consensus Findings') el.textContent='समूह निष्कर्ष';
+                        if (el.textContent.trim()==='All Conditions') el.textContent='संभावित स्थितियाँ';
+                        if (el.textContent.trim()==='Recommendations') el.textContent='सिफारिशें';
+                        if (el.textContent.trim()==='Next Steps') el.textContent='अगले कदम';
+                        if (el.textContent.trim()==='Patient Name') el.textContent='रोगी का नाम';
+                    });
+                }
+            })();
+            // Patient-scan form handler (new patient upload in scan dashboard)
+            const patientUploadForm = document.getElementById('patient-upload-form');
+            if (patientUploadForm) {
+                patientUploadForm.addEventListener('submit', async function(ev){
+                    ev.preventDefault();
+                    const fileEl = document.getElementById('patient-report-file');
+                    if (!fileEl || !fileEl.files || !fileEl.files[0]) return alert('Select a file');
+                    const fd = new FormData(); fd.append('report', fileEl.files[0]); fd.append('lang', getSelectedLang());
+                    try {
+                        const res = await fetch('/api/analyze', { method: 'POST', body: fd });
+                        if (!res.ok) { const txt = await res.text(); alert('Analyze failed: ' + txt); return; }
+                        const j = await res.json();
+                        // reuse existing code paths to render agent outputs and final report
+                        // Render primary final summary for patient-facing view
+                        const execSummary = (typeof j.final_report === 'string') ? j.final_report : (j.final_report?.executive_summary || j.final_report?.summary || '');
+                        document.getElementById('final-exec-summary').textContent = execSummary;
+                        const final = j.final_report || j.finalReport || j.final || '';
+                        if (typeof final === 'string') {
+                            document.getElementById('final-exec-summary').textContent = final;
+                        } else if (final && typeof final === 'object') {
+                            document.getElementById('final-exec-summary').textContent = final.executive_summary || final.summary || '';
+                            document.getElementById('final-consensus').textContent = Array.isArray(final.consensus_findings) ? final.consensus_findings.join('\n') : (final.consensus_findings || '');
+                        }
+                        // show results in the scan dashboard
+                        const results = document.getElementById('result-container'); if (results) results.style.display = 'flex';
+                    } catch (e) { alert('Analyze failed: ' + String(e)); }
+                });
+                // patient back-to-chat button removed from UI; keep scan flow simple
+            }
+        });
+
+        // Sidebar and recent-session UI removed per user request.
+        // ...existing chat dashboard and session-specific helpers remain below...
+
+        // Minimal session list helper (used by the dashboard)
+        async function fetchSessions() {
+            try {
+                const res = await fetch('/chat_sessions');
+                if (!res.ok) return [];
+                const j = await res.json();
+                return j.sessions || [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        // Chat Dashboard: show full transcripts
+        function ensureDashboardExists() {
+            if (document.getElementById('chat-dashboard')) return;
+            const dash = document.createElement('div'); dash.id='chat-dashboard';
+            dash.style.position='fixed'; dash.style.right='12px'; dash.style.top='60px'; dash.style.width='520px'; dash.style.maxHeight='80vh'; dash.style.overflow='auto'; dash.style.background='#fff'; dash.style.border='1px solid #ddd'; dash.style.borderRadius='10px'; dash.style.boxShadow='0 10px 30px rgba(0,0,0,0.12)'; dash.style.zIndex='200'; dash.style.padding='12px';
+            const hdr = document.createElement('div'); hdr.style.display='flex'; hdr.style.justifyContent='space-between'; hdr.style.alignItems='center';
+            const h = document.createElement('div'); h.textContent='Chat Dashboard'; h.style.fontWeight='700'; h.style.fontSize='1.05em';
+            const actions = document.createElement('div');
+            const closeBtn = document.createElement('button'); closeBtn.className='btn btn-sm btn-outline-secondary'; closeBtn.textContent='Close'; closeBtn.onclick=()=> dash.remove();
+            const loadAllBtn = document.createElement('button'); loadAllBtn.className='btn btn-sm btn-primary'; loadAllBtn.style.marginLeft='8px'; loadAllBtn.textContent='Load All'; loadAllBtn.onclick = async ()=>{ const list = await fetchSessions(); loadMultipleSessionsToMain(list); dash.remove(); };
+            actions.appendChild(loadAllBtn); actions.appendChild(closeBtn);
+            hdr.appendChild(h); hdr.appendChild(actions);
+            dash.appendChild(hdr);
+            const body = document.createElement('div'); body.id='chat-dashboard-body'; body.style.marginTop='10px'; dash.appendChild(body);
+            document.body.appendChild(dash);
+        }
+
+        async function openChatDashboard(session_id) {
+            ensureDashboardExists();
+            const body = document.getElementById('chat-dashboard-body');
+            body.innerHTML='';
+            if (session_id) {
+                const res = await fetch(`/chat_sessions/${session_id}`);
+                if (!res.ok) { body.textContent='Failed to load.'; return; }
+                const j = await res.json();
+                renderTranscriptInto(body, j.session_id || session_id, j.history || []);
+            } else {
+                // show all
+                const list = await fetchSessions();
+                for (const s of list) {
+                    const r = await fetch(`/chat_sessions/${s.session_id}`);
+                    if (!r.ok) continue;
+                    const j = await r.json();
+                    renderTranscriptInto(body, s.title || s.session_id.slice(0,8), j.history || []);
+                }
+            }
+        }
+
+        function renderTranscriptInto(container, title, history){
+            const box = document.createElement('div'); box.style.marginBottom='12px'; box.style.padding='8px'; box.style.border='1px solid #eee'; box.style.borderRadius='8px';
+            const h = document.createElement('div'); h.textContent = title; h.style.fontWeight='600'; h.style.marginBottom='6px';
+            box.appendChild(h);
+            history.forEach(turn=>{
+                const row = document.createElement('div'); row.style.display='flex'; row.style.marginBottom='6px';
+                const side = document.createElement('div'); side.style.fontWeight='600'; side.style.width='60px'; side.textContent = turn.role==='user' ? 'You' : 'Bot';
+                const content = document.createElement('div'); content.textContent = turn.content; content.style.flex='1'; content.style.whiteSpace='pre-wrap';
+                row.appendChild(side); row.appendChild(content);
+                box.appendChild(row);
+            });
+            const loadBtn = document.createElement('button'); loadBtn.className='btn btn-sm btn-primary'; loadBtn.textContent='Open in Chat'; loadBtn.onclick = ()=>{ if (history.length) { document.getElementById('chat-window').innerHTML=''; history.forEach(t=> appendMessage(t.role==='user'?'You':'Bot', t.content)); chatSessionId = container.querySelector('[data-session-id]')?.dataset?.sessionId || null; } };
+            box.appendChild(loadBtn);
+            // attach data attribute for session id if available
+            box.dataset.sessionId = title;
+            container.appendChild(box);
+        }
+
+        async function loadMultipleSessionsToMain(list){
+            document.getElementById('chat-window').innerHTML='';
+            for (const s of list) {
+                const r = await fetch(`/chat_sessions/${s.session_id}`);
+                if (!r.ok) continue;
+                const j = await r.json();
+                (j.history||[]).forEach(turn=> appendMessage(turn.role==='user'?'You':'Bot', turn.content));
+            }
+        }
+
+        async function loadSession(session_id) {
+            // load session history into chat window
+            try {
+                const res = await fetch(`/chat_sessions/${session_id}`);
+                if (!res.ok) return;
+                const j = await res.json();
+                document.getElementById('chat-window').innerHTML = '';
+                (j.history||[]).forEach(turn=>{
+                    appendMessage(turn.role==='user'?'You':'Bot', turn.content);
+                });
+                chatSessionId = session_id;
+            } catch(e) { console.error(e); }
+        }
+
+        async function deleteSession(session_id) {
+            if (!confirm('Delete this conversation?')) return;
+            await fetch(`/chat_sessions/${session_id}`, { method: 'DELETE' });
+            // close dashboard if open
+            const dash = document.getElementById('chat-dashboard'); if (dash) dash.remove();
+            if (chatSessionId===session_id) {
+                chatSessionId=null; document.getElementById('chat-window').innerHTML='';
+            }
+        }
+
+        async function exportSession(session_id) {
+            const res = await fetch(`/chat_sessions/${session_id}/export`);
+            if (!res.ok) return;
+            const j = await res.json();
+            // trigger download
+            const blob = new Blob([j.export||''], {type:'text/plain'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href=url; a.download=`chat-${session_id}.txt`; a.click();
+            URL.revokeObjectURL(url);
+        }
+
+    // Sidebar removed; no automatic session list refresh.
+
+        // --- Upload via AJAX and populate results ---
+        (function(){
+            const uploadForm = document.getElementById('upload-form');
+            const analyzeBtn = document.getElementById('analyze-btn');
+            const finalBoard = document.getElementById('final-board');
+            const agentBoards = null; // agent outputs removed
+            const scanProgressEl = document.getElementById('scan-progress');
+            // keep the last analyze response so clicking the Doctor Output can reveal agent outputs
+            let lastAnalyzeResult = null;
+
+            // Build a list of important words/phrases from the analysis response
+            function buildImportantWords(resp, agentKey){
+                const set = new Set();
+                try{
+                    const final = resp.final_report || resp.finalReport || resp.final || {};
+                    if (final && typeof final === 'object' && Array.isArray(final.recommendations)) final.recommendations.forEach(r=>{ set.add(String(r)); });
+                    const possible = ['cardiology','psychology','pulmonology','dermatology','endocrinology','gastroenterology','general_physician','hematology','nephrology','radiology'];
+                    for (const k of possible){ const a = resp[k]; if (a && typeof a === 'object'){
+                        if (Array.isArray(a.recommendations)) a.recommendations.forEach(it=> set.add(String(it)));
+                        if (Array.isArray(a.likely_conditions)) a.likely_conditions.forEach(it=> set.add(String(it)));
+                        if (k==='hematology' && a.abnormal_values && typeof a.abnormal_values === 'object'){
+                            Object.keys(a.abnormal_values).forEach(x=> set.add(String(x)));
+                            Object.values(a.abnormal_values).forEach(v=> { if (v && typeof v === 'string') set.add(String(v)); });
+                        }
+                    }}
+                    if (agentKey && resp[agentKey] && typeof resp[agentKey] === 'object'){
+                        const a = resp[agentKey]; if (Array.isArray(a.recommendations)) a.recommendations.forEach(it=> set.add(String(it))); if (Array.isArray(a.likely_conditions)) a.likely_conditions.forEach(it=> set.add(String(it)));
+                    }
+                }catch(e){}
+                return Array.from(set).slice(0,80).map(s=> String(s).trim()).filter(Boolean);
+            }
+
+            // Apply highlights by wrapping matched words/phrases in a span with .hs-highlight
+            function applyHighlights(el, words){
+                try{
+                    if (!el || !words || !words.length) return;
+                    const html = String(el.textContent || el.innerText || '');
+                    words = Array.from(new Set(words)).sort((a,b)=> b.length - a.length).map(w=> w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
+                    if (!words.length) return;
+                    const re = new RegExp('(' + words.join('|') + ')','gi');
+                    const newHtml = html.replace(re, function(m){ return '<span class="hs-highlight">' + m + '</span>'; });
+                    el.innerHTML = newHtml;
+                }catch(e){ console.error('highlight failed', e); }
+            }
+
+            // Render analysis response in a structured way: final exec summary + specialist section
+            function renderAnalysis(resp, spec){
+                try{
+                    const final = resp.final_report || resp.finalReport || resp.final || {};
+                    // Determine final executive summary text
+                    const exec = (typeof final === 'string') ? final : (final?.executive_summary || final?.summary || 'No executive summary available.');
+                    const finalEl = document.getElementById('final-exec-summary');
+                    finalEl.textContent = exec || 'No executive summary available.';
+
+                    // Ensure doctor title is visible
+                    const doctorTitleEl = document.getElementById('doctor-output-title'); if (doctorTitleEl) doctorTitleEl.textContent = 'Doctor Output (Aggregator)';
+
+                    // Specialist area
+                    const paraEl = document.getElementById('specialist-paragraph');
+                    const pointsEl = document.getElementById('specialist-points');
+                    // Clear previous
+                    paraEl.textContent = '';
+                    if (pointsEl) pointsEl.innerHTML = '';
+
+                    // Pick specialist: prefer explicit spec param, then selected dropdown, then first available agent
+                    let agentKey = spec;
+                    const sel = document.getElementById('specialist-select');
+                    const selVal = sel ? sel.value : '';
+                    if (!agentKey && selVal) agentKey = selVal;
+                    if (!agentKey){
+                        const possible = ['cardiology','psychology','pulmonology','dermatology','endocrinology','gastroenterology','general_physician','hematology','nephrology','radiology'];
+                        for (const k of possible){ if (resp[k]){ agentKey = k; break; } }
+                    }
+
+                    if (agentKey){
+                        const agentObj = resp[agentKey];
+                        // If agent provided structured fields, render them using the structured renderer
+                        if (agentObj && typeof agentObj === 'object'){
+                            try{
+                                paraEl.innerHTML = renderAgentOutputHTML(agentObj);
+                                if (pointsEl) pointsEl.innerHTML = '';
+                            }catch(e){ console.error('renderAgentOutputHTML failed', e); paraEl.textContent = String(agentObj.summary || agentObj.executive_summary || ''); }
+                        } else if (agentObj && typeof agentObj === 'string'){
+                            // agent returned plain string -> show as summary
+                            paraEl.innerHTML = `<div class="hs-section"><h4>Summary</h4><div>${escapeHtml(String(agentObj)).replace(/\n/g,'<br>')}</div></div>`;
+                            if (pointsEl) pointsEl.innerHTML = '';
+                        } else {
+                            // fallback: show final recommendations collected from aggregator or any agent lists
+                            paraEl.textContent = exec || '';
+                            let recs = [];
+                            if (final && typeof final === 'object' && Array.isArray(final.recommendations)) recs = final.recommendations;
+                            else {
+                                ['cardiology','psychology','pulmonology'].forEach(k=>{ const a = resp[k]; if (a && typeof a === 'object' && Array.isArray(a.recommendations)) recs = recs.concat(a.recommendations); });
+                            }
+                            if (pointsEl) { pointsEl.innerHTML = ''; recs.forEach(r=>{ const li=document.createElement('li'); li.textContent = r; pointsEl.appendChild(li); }); }
+                        }
+                    } else {
+                        // No agent key found: present final summary and any final.recommendations
+                        paraEl.textContent = exec || '';
+                        if (final && typeof final === 'object' && Array.isArray(final.recommendations)){
+                            final.recommendations.forEach(r=>{ const li=document.createElement('li'); li.textContent = r; pointsEl.appendChild(li); });
+                        }
+                    }
+                    // Highlights
+                    try{ const important = buildImportantWords(resp, agentKey); applyHighlights(document.getElementById('final-exec-summary'), important); applyHighlights(paraEl, important); }catch(e){}
+                }catch(e){ console.error('renderAnalysis failed', e); }
+            }
+
+            if (!uploadForm) return;
+
+            uploadForm.addEventListener('submit', async function(ev){
+                ev.preventDefault();
+                // Ensure upload area is visible and chat is hidden so results appear under scan area only
+                try { uploadContainer.style.display = 'block'; } catch(e){}
+                try { const chatSection = document.getElementById('symptom-chat-section'); if (chatSection) chatSection.style.display = 'none'; } catch(e){}
+                scanProgressEl.style.display = 'block';
+                const _ab = document.getElementById('agent-boards'); if (_ab) _ab.style.display = 'none';
+                finalBoard.style.display = 'none';
+                const fd = new FormData(uploadForm);
+                try {
+                        // include selected language
+                        fd.append('lang', getSelectedLang());
+                        const res = await fetch('/api/analyze', { method: 'POST', body: fd });
+                    if (!res.ok) {
+                        const t = await res.text();
+                        alert('Analyze failed: ' + t);
+                        scanProgressEl.style.display = 'none';
+                        return;
+                    }
+                    const j = await res.json();
+                    lastAnalyzeResult = j;
+                    window.lastAnalyzeResult = j;
+                    // If backend detected a blood report, auto-select hematology and show its output
+                    try{ if (j.is_blood_report){ const sel = document.getElementById('specialist-select'); if (sel){ sel.value = 'hematology'; } } }catch(e){}
+                    // Use structured renderer for consistent display
+                    renderAnalysis(j, null);
+                    // show two-column results container when either Doctor tab is active OR the upload container (scan flow) is visible
+                    const results = document.getElementById('result-container');
+                    const doctorTabIsActive = document.getElementById('doctor-tab')?.classList.contains('active');
+                    const uploadContainerEl = document.getElementById('upload-container');
+                    const uploadFlowVisible = uploadContainerEl && uploadContainerEl.style.display !== 'none';
+                    if (results && (doctorTabIsActive || uploadFlowVisible)) results.style.display = 'flex';
+                    if (doctorTabIsActive || uploadFlowVisible) { finalBoard.style.display = 'block'; }
+                } catch (err) {
+                    alert('Scan failed: ' + String(err));
+                } finally {
+                    scanProgressEl.style.display = 'none';
+                }
+            });
+
+            // Main Doctor (aggregate) button: call analyze with aggregate=true
+            const mainDoctorBtn = document.getElementById('analyze-btn');
+            if (mainDoctorBtn) mainDoctorBtn.addEventListener('click', async function(ev){
+                ev.preventDefault();
+                const fileEl = document.getElementById('report-file');
+                if (!fileEl || !fileEl.files || !fileEl.files[0]) return alert('Select a file to analyze');
+                const fd = new FormData(); fd.append('report', fileEl.files[0]); fd.append('lang', getSelectedLang());
+                try{
+                    scanProgressEl.style.display = 'block';
+                    const res = await fetch('/api/analyze?aggregate=true', { method: 'POST', body: fd });
+                    if (!res.ok){ const t = await res.text(); alert('Analyze failed: ' + t); return; }
+                    const j = await res.json();
+                    lastAnalyzeResult = j;
+                    window.lastAnalyzeResult = j;
+                    try{ if (j.is_blood_report){ const sel = document.getElementById('specialist-select'); if (sel){ sel.value = 'hematology'; } } }catch(e){}
+                    // Use structured renderer
+                    renderAnalysis(j, null);
+                    document.getElementById('result-container').style.display = 'flex'; finalBoard.style.display = 'block';
+                }catch(e){ alert('Main Doctor request failed: ' + String(e)); }
+                finally { scanProgressEl.style.display = 'none'; }
+            });
+
+            // Specialist button: call analyze with specialist param
+            const specialistBtn = document.getElementById('specialist-btn');
+            if (specialistBtn) specialistBtn.addEventListener('click', async function(ev){
+                ev.preventDefault();
+                const fileEl = document.getElementById('report-file');
+                const sel = document.getElementById('specialist-select');
+                const spec = sel ? sel.value : '';
+                if (!spec) return alert('Choose a specialist');
+                if (!fileEl || !fileEl.files || !fileEl.files[0]) return alert('Select a file to analyze');
+                const fd = new FormData(); fd.append('report', fileEl.files[0]); fd.append('lang', getSelectedLang());
+                try{
+                    scanProgressEl.style.display = 'block';
+                    const res = await fetch('/api/analyze?specialist=' + encodeURIComponent(spec), { method: 'POST', body: fd });
+                    if (!res.ok){ const t = await res.text(); alert('Specialist analyze failed: ' + t); return; }
+                    const j = await res.json();
+                    lastAnalyzeResult = j;
+                    window.lastAnalyzeResult = j;
+                    try{ if (j.is_blood_report){ const sel = document.getElementById('specialist-select'); if (sel){ sel.value = 'hematology'; } } }catch(e){}
+                    // Use structured renderer for the selected specialist
+                    renderAnalysis(j, spec);
+                    document.getElementById('result-container').style.display = 'flex'; finalBoard.style.display = 'block';
+                }catch(e){ alert('Specialist request failed: ' + String(e)); }
+                finally { scanProgressEl.style.display = 'none'; }
+            });
+
+            // Back-to-chat UI removed; no handler needed here.
+
+            // Clicking Doctor Output title should also populate Agent Output using last analyze result
+            const doctorTitle = document.getElementById('doctor-output-title');
+            if (doctorTitle) doctorTitle.addEventListener('click', function(){
+                try{
+                    if (!lastAnalyzeResult) return;
+                    const sel = document.getElementById('specialist-select');
+                    const selVal = sel ? sel.value : '';
+                    let agentKey = selVal && selVal.length ? selVal : null;
+                    // if no selected specialist, pick first available agent key from result
+                    if (!agentKey){
+                        const possible = ['cardiology','psychology','pulmonology','dermatology','endocrinology','gastroenterology','general_physician','hematology','nephrology','radiology'];
+                        for (const k of possible){ if (lastAnalyzeResult[k]){ agentKey = k; break; } }
+                    }
+                    if (!agentKey) return; // nothing to show
+
+                    const agentObj = lastAnalyzeResult[agentKey];
+                    const agentName = (sel && selVal) ? (sel.options[sel.selectedIndex].text || agentKey) : (agentKey.replace(/_/g,' ').replace(/\b\w/g, c=>c.toUpperCase()));
+                    const agentTitleEl = document.getElementById('agent-output-title'); if (agentTitleEl) agentTitleEl.textContent = 'Agent Output — ' + agentName;
+                    const agentParaEl = document.getElementById('specialist-paragraph');
+                    const agentPointsEl = document.getElementById('specialist-points');
+                    const doctorFinal = lastAnalyzeResult.final_report || lastAnalyzeResult.final || lastAnalyzeResult.finalReport || '';
+                    // Show doctor's summary in the exec summary area (already present) and also include in agent paragraph
+                    const doctorSummary = (typeof doctorFinal === 'string') ? doctorFinal : (doctorFinal?.executive_summary || doctorFinal?.summary || '');
+                    document.getElementById('final-exec-summary').textContent = doctorSummary;
+                    // populate agent paragraph and bullets with focus + summary and detailed fields
+                    if (agentObj && typeof agentObj === 'object'){
+                        const focus = agentObj.focus || agentObj.role || '';
+                        const summary = agentObj.summary || agentObj.executive_summary || '';
+                        agentParaEl.innerHTML = '';
+                        if (focus) agentParaEl.innerHTML += '<strong>' + String(focus) + '</strong>\n\n';
+                        if (summary) agentParaEl.innerHTML += String(summary);
+                        if (agentPointsEl) {
+                            agentPointsEl.innerHTML = '';
+                            // abnormal values
+                            if (agentObj.abnormal_values && typeof agentObj.abnormal_values === 'object'){
+                                Object.keys(agentObj.abnormal_values).forEach(k=>{ const v = agentObj.abnormal_values[k]; const li=document.createElement('li'); li.textContent = k + ': ' + (typeof v==='string'?v:JSON.stringify(v)); agentPointsEl.appendChild(li); });
+                            }
+                            // render arrays for tests, treatments, recommendations etc
+                            const fields = ['findings','recommended_tests','recommended_treatments','recommendations','next_steps','likely_conditions'];
+                            for (const f of fields){ if (Array.isArray(agentObj[f]) && agentObj[f].length){ agentObj[f].forEach(x=>{ const li=document.createElement('li'); li.textContent = (f==='findings'?'Finding: ': (f==='recommended_tests'?'Test: ': (f==='recommended_treatments'?'Treatment: ': (f==='next_steps'?'Next step: ': (f==='likely_conditions'?'Likely: ':'') )))) + x; agentPointsEl.appendChild(li); }); } }
+                        }
+                    } else if (agentObj && typeof agentObj === 'string'){
+                        if (agentParaEl) agentParaEl.textContent = agentObj;
+                        if (agentPointsEl){ agentPointsEl.innerHTML=''; const li=document.createElement('li'); li.textContent = agentObj; agentPointsEl.appendChild(li); }
+                    } else {
+                        // fallback to final report recommendations
+                        if (agentParaEl) agentParaEl.textContent = doctorSummary || '';
+                        if (agentPointsEl){ agentPointsEl.innerHTML = ''; if (doctorFinal && typeof doctorFinal === 'object' && Array.isArray(doctorFinal.recommendations)){ doctorFinal.recommendations.forEach(r=>{ const li=document.createElement('li'); li.textContent = r; agentPointsEl.appendChild(li); }); } }
+                    }
+                    document.getElementById('result-container').style.display = 'flex';
+                    document.getElementById('final-board').style.display = 'block';
+                }catch(e){ console.error('doctor title click handler failed', e); }
+            });
+        })();
+
+        // --- Doctor / Clinician JS (simple local auth + multi-upload) ---
+        (function(){
+            const signupBtn = document.getElementById('doc-signup');
+            const loginBtn = document.getElementById('doc-login');
+            const usernameEl = document.getElementById('doc-username');
+            const passwordEl = document.getElementById('doc-password');
+            const welcome = document.getElementById('doc-welcome');
+            const doctorFiles = document.getElementById('doctor-files');
+            const doctorUpload = document.getElementById('doctor-upload');
+            const doctorCases = document.getElementById('doctor-cases');
+            const doctorSummaryOutput = document.getElementById('doctor-summary-output');
+
+            // Doctor panel simplified: auth removed. Only upload/analyze, render cases and summary remain.
+
+            // Render cases stored locally (demo storage) into the UI
+            function renderCases(){
+                doctorCases.innerHTML = '';
+                const saved = JSON.parse(localStorage.getItem('doctor_cases') || '[]');
+                if (!saved.length){ doctorCases.innerHTML = '<div style="color:#666">No cases stored yet. Use Upload & Analyze to add cases.</div>'; return; }
+                saved.slice().reverse().forEach((c, idx)=>{
+                    const box = document.createElement('div'); box.className='report-section';
+                    const title = c.patient_name || c.file_name || `Case ${saved.length-idx}`;
+                    let preview = '';
+                    if (typeof c.final_report === 'string') preview = c.final_report.slice(0,800);
+                    else if (c.final_report && c.final_report.executive_summary) preview = c.final_report.executive_summary.slice(0,800);
+                    box.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                            <div style="font-weight:700">${title}</div>
+                            <div style="display:flex; gap:8px;">
+                                <button class='btn btn-sm btn-primary btn-view' data-idx='${saved.length-1-idx}'>View</button>
+                                <button class='btn btn-sm btn-danger btn-delete' data-idx='${saved.length-1-idx}'>Delete</button>
+                            </div>
+                        </div>
+                        <pre style="max-height:160px; overflow:auto; white-space:pre-wrap; margin-top:8px;">${escapeHtml(preview)}</pre>
+                        <div style="margin-top:8px;">
+                            <button class='btn btn-sm btn-outline-secondary btn-toggle-agents' data-idx='${saved.length-1-idx}'>Show agent outputs</button>
+                            <div class='agent-block' id='agents-${saved.length-1-idx}' style='display:none; margin-top:8px;'>
+                                ${(() => {
+                                    const keys = ['cardiology','psychology','pulmonology','dermatology','endocrinology','gastroenterology','general_physician','hematology','nephrology','radiology'];
+                                    const help = window.HELP_TEXT || {};
+                                    const lang = (window.getSelectedLang && window.getSelectedLang()) ? window.getSelectedLang() : 'en';
+                                    // Compact dashboard (tiles)
+                                    const tiles = keys.map(k => {
+                                        const title = k.replace(/_/g,' ').replace(/\b\w/g, c=>c.toUpperCase());
+                                        let focus = (c.agent_outputs && c.agent_outputs[k] && c.agent_outputs[k].focus) ? c.agent_outputs[k].focus : (help[lang] && help[lang][k] ? help[lang][k] : title);
+                                        let source = (c.agent_outputs && c.agent_outputs[k] && c.agent_outputs[k].focus) ? 'Based on report' : 'General focus';
+                                        return `
+                                            <div class="agent-tile" onclick="toggleAgentDetail(${saved.length-1-idx}, '${k}')" style="width:calc(33% - 8px);border:1px solid #eee;border-radius:6px;padding:8px;background:#fafafa;cursor:pointer">
+                                                <div style="font-weight:600">${title}</div>
+                                                <div style="font-size:0.9em;color:#444;margin-top:4px">${escapeHtml(String(focus || ''))}</div>
+                                                <div style="font-size:0.8em;color:#888;margin-top:6px">${source === 'Based on report' ? 'Based on report' : 'General focus'}</div>
+                                            </div>
+                                        `;
+                                    }).join('');
+
+                                    // Detailed cards (hidden initially, toggled by tile click)
+                                    const details = keys.map(k => {
+                                        const title = k.replace(/_/g,' ').replace(/\b\w/g, c=>c.toUpperCase());
+                                        const focus = (c.agent_outputs && c.agent_outputs[k] && c.agent_outputs[k].focus) ? c.agent_outputs[k].focus : (help[lang] && help[lang][k] ? help[lang][k] : '');
+                                        const source = (c.agent_outputs && c.agent_outputs[k] && c.agent_outputs[k].focus) ? 'Based on report' : 'General focus';
+                                        return `
+                                            <div id="agent-detail-${saved.length-1-idx}-${k}" style="display:none;margin-top:8px;">
+                                                <div style="border:1px solid #eee;border-radius:8px;padding:10px;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,0.04);">
+                                                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                                                        <div style="font-weight:700">${title}</div>
+                                                        <div style="font-size:0.85em;color:#666">${source}</div>
+                                                    </div>
+                                                    <div style="margin-top:6px;font-size:0.95em;color:#222"><strong>${escapeHtml(String(focus || ''))}</strong></div>
+                                                    <div style="margin-top:8px;white-space:pre-wrap">${renderAgentOutputHTML(c.agent_outputs?.[k])}</div>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('');
+
+                                    return `<div style="display:flex;flex-wrap:wrap;gap:8px">${tiles}</div>` + details;
+                                })()}
+                            </div>
+                        </div>
+                    `;
+                    doctorCases.appendChild(box);
+                });
+                // attach handlers
+                document.querySelectorAll('.btn-view').forEach(b=> b.addEventListener('click', (ev)=>{ const idx = b.dataset.idx; showCaseDetail(parseInt(idx,10)); }));
+                document.querySelectorAll('.btn-delete').forEach(b=> b.addEventListener('click', (ev)=>{ const idx = b.dataset.idx; deleteCase(parseInt(idx,10)); }));
+                document.querySelectorAll('.btn-toggle-agents').forEach(b=> b.addEventListener('click', (ev)=>{ const idx = b.dataset.idx; const el = document.getElementById('agents-'+idx); if(!el) return; if(el.style.display==='none'){ el.style.display='block'; b.textContent='Hide agent outputs'; } else { el.style.display='none'; b.textContent='Show agent outputs'; } }));
+            }
+
+            // Render agent output (string or structured object) into clear labeled sections
+            function renderAgentOutputHTML(data){
+                if (!data && data !== 0) return '';
+                if (typeof data === 'string') return `<div class="hs-section"><h4>Summary</h4><div>${escapeHtml(data).replace(/\n/g,'<br>')}</div></div>`;
+                try{
+                    const obj = (typeof data === 'string') ? JSON.parse(data) : data;
+                    const parts = [];
+                    const summary = obj.executive_summary || obj.summary || obj.overview || obj.description || '';
+                    if (summary) parts.push(`<div class="hs-section"><h4>Summary</h4><div style="white-space:pre-wrap">${escapeHtml(String(summary))}</div></div>`);
+
+                    if (Array.isArray(obj.findings) && obj.findings.length){ let h = '<div class="hs-section"><h4>Findings</h4><ul>'; obj.findings.forEach(it=> h += `<li>${escapeHtml(String(it))}</li>`); h += '</ul></div>'; parts.push(h); }
+                    if (obj.abnormal_values && typeof obj.abnormal_values === 'object' && Object.keys(obj.abnormal_values).length){ let h = '<div class="hs-section"><h4>Abnormal values</h4><ul>'; Object.keys(obj.abnormal_values).forEach(k=>{ const v = obj.abnormal_values[k]; h += `<li>${escapeHtml(k)}: ${escapeHtml(typeof v === 'string' ? v : JSON.stringify(v))}</li>` }); h += '</ul></div>'; parts.push(h); }
+                    if (Array.isArray(obj.recommended_tests) && obj.recommended_tests.length){ let h = '<div class="hs-section"><h4>Recommended tests</h4><ul>'; obj.recommended_tests.forEach(it=> h += `<li>${escapeHtml(String(it))}</li>`); h += '</ul></div>'; parts.push(h); }
+                    if (Array.isArray(obj.recommended_treatments) && obj.recommended_treatments.length){ let h = '<div class="hs-section"><h4>Recommended treatments</h4><ul>'; obj.recommended_treatments.forEach(it=> h += `<li>${escapeHtml(String(it))}</li>`); h += '</ul></div>'; parts.push(h); }
+                    if (Array.isArray(obj.recommendations) && obj.recommendations.length){ let h = '<div class="hs-section"><h4>Recommendations</h4><ul>'; obj.recommendations.forEach(it=> h += `<li>${escapeHtml(String(it))}</li>`); h += '</ul></div>'; parts.push(h); }
+                    if (Array.isArray(obj.next_steps) && obj.next_steps.length){ let h = '<div class="hs-section"><h4>Next steps</h4><ul>'; obj.next_steps.forEach(it=> h += `<li>${escapeHtml(String(it))}</li>`); h += '</ul></div>'; parts.push(h); }
+                    if (Array.isArray(obj.likely_conditions) && obj.likely_conditions.length){ let h = '<div class="hs-section"><h4>Likely conditions</h4><ul>'; obj.likely_conditions.forEach(it=> h += `<li>${escapeHtml(String(it))}</li>`); h += '</ul></div>'; parts.push(h); }
+
+                    let meta = '';
+                    if (obj.condition) meta += `<div><strong>Condition:</strong> ${escapeHtml(String(obj.condition))}</div>`;
+                    if (obj.major_problem) meta += `<div><strong>Major problem:</strong> ${escapeHtml(String(obj.major_problem))}</div>`;
+                    if (obj.confidence) meta += `<div><strong>Confidence:</strong> ${escapeHtml(String(obj.confidence))}</div>`;
+                    if (meta) parts.push(`<div class="hs-section">${meta}</div>`);
+
+                    if (!parts.length) return `<pre>${escapeHtml(JSON.stringify(obj, null, 2))}</pre>`;
+                    return parts.join('\n');
+                }catch(e){ return escapeHtml(String(data)); }
+            }
+
+            function escapeHtml(s){ if(!s) return ''; return String(s).replace(/[&<>"']/g, function(ch){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]); }); }
+
+            function deleteCase(idx){ const arr = JSON.parse(localStorage.getItem('doctor_cases')||'[]'); if (idx<0||idx>=arr.length) return; arr.splice(idx,1); localStorage.setItem('doctor_cases', JSON.stringify(arr)); renderCases(); }
+
+            // Toggle detailed view for an agent tile
+            window.toggleAgentDetail = function(caseIdx, agentKey){
+                try{
+                    const id = `agent-detail-${caseIdx}-${agentKey}`;
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    if (el.style.display === 'none' || !el.style.display) el.style.display = 'block'; else el.style.display = 'none';
+                }catch(e){ console.error('toggleAgentDetail error', e); }
+            }
+
+            function showCaseDetail(idx){ const arr = JSON.parse(localStorage.getItem('doctor_cases')||'[]'); const c = arr[idx]; if(!c) return alert('Case not found');
+                // Build a nicely formatted view using HTML formatting helpers
+                const w = window.open('', '_blank', 'width=900,height=700');
+                const doc = w.document; doc.write('<html><head><title>Case Detail</title><meta charset="utf-8"><style>body{font-family:Arial;padding:16px} h3{margin-top:12px}</style></head><body>');
+                doc.write(`<h2>${escapeHtml(c.patient_name||c.file_name||'Case')}</h2>`);
+                // Final report
+                if (c.final_report && typeof c.final_report === 'string'){
+                    doc.write(`<h3>Final Report</h3><div style="white-space:pre-wrap">${escapeHtml(c.final_report)}</div>`);
+                } else if (c.final_report){
+                    doc.write('<h3>Final Report</h3>');
+                    // try to render structured final report
+                    try{
+                        const fr = (typeof c.final_report === 'string') ? JSON.parse(c.final_report) : c.final_report;
+                        if (fr.executive_summary) doc.write('<p>' + escapeHtml(String(fr.executive_summary)).replace(/\n/g,'<br>') + '</p>');
+                        if (Array.isArray(fr.recommendations) && fr.recommendations.length){ doc.write('<h4>Recommendations</h4><ul>'); fr.recommendations.forEach(r=> doc.write('<li>'+escapeHtml(String(r))+'</li>')); doc.write('</ul>'); }
+                        if (Array.isArray(fr.consensus_findings) && fr.consensus_findings.length){ doc.write('<h4>Consensus Findings</h4><ul>'); fr.consensus_findings.forEach(r=> doc.write('<li>'+escapeHtml(String(r))+'</li>')); doc.write('</ul>'); }
+                    }catch(e){ doc.write('<pre>' + escapeHtml(JSON.stringify(c.final_report, null, 2)) + '</pre>'); }
+                }
+                // Agent outputs
+                if (c.agent_outputs){ doc.write('<h3>Agent Outputs</h3>');
+                    for (const k of Object.keys(c.agent_outputs || {})){
+                        const v = c.agent_outputs[k];
+                        doc.write('<h4>'+escapeHtml(k)+'</h4>');
+                        try{
+                            // call the same rendering logic but in popup
+                            const html = (function(data){
+                                try{
+                                    if (!data && data !== 0) return '';
+                                    if (typeof data === 'string') return escapeHtml(data).replace(/\n/g,'<br>');
+                                    const obj = (typeof data === 'string') ? JSON.parse(data) : data;
+                                    let html = '';
+                                    const summary = obj.executive_summary || obj.summary || obj.overview || obj.description || '';
+                                    if (summary) html += '<p>' + escapeHtml(String(summary)).replace(/\n/g,'<br>') + '</p>';
+                                    const listKeys = ['likely_conditions','recommendations','next_steps','highlights','findings','evidence','observations'];
+                                    for (const kk of listKeys){ if (Array.isArray(obj[kk]) && obj[kk].length){ html += '<ul>'; obj[kk].forEach(it=> html += '<li>'+escapeHtml(String(it))+'</li>'); html += '</ul>'; } }
+                                    for (const kk of Object.keys(obj)){
+                                        if (listKeys.includes(kk)) continue;
+                                        const vv = obj[kk];
+                                        if (Array.isArray(vv) && vv.length){ html += '<h4>' + escapeHtml(kk.replace(/_/g,' ')) + '</h4><ul>'; vv.forEach(it=> html += '<li>'+escapeHtml(String(it))+'</li>'); html += '</ul>'; }
+                                        else if (typeof vv === 'string' && vv.length && !summary){ html += '<p><strong>' + escapeHtml(kk.replace(/_/g,' ')) + ':</strong> ' + escapeHtml(vv).replace(/\n/g,'<br>') + '</p>'; }
+                                    }
+                                    if (!html) return escapeHtml(JSON.stringify(obj, null, 2)).replace(/\n/g,'<br>');
+                                    return html;
+                                }catch(e){ return escapeHtml(String(data)); }
+                            })(v);
+                            doc.write('<div style="white-space:pre-wrap">' + html + '</div>');
+                        }catch(e){ doc.write('<pre>' + escapeHtml(String(v)) + '</pre>'); }
+                    }
+                    doc.write('</h3>');
+                }
+                doc.write('</body></html>'); doc.close();
+            }
+
+            // Load local cases on init
+            renderCases();
+
+            // --- Help button: show agent focuses ---
+            (function(){
+                const helpBtn = document.getElementById('help-focus-btn');
+
+                function getHelpText(lang){
+                    return (HELP_TEXT && HELP_TEXT[lang]) ? HELP_TEXT[lang] : (HELP_TEXT && HELP_TEXT['en']) || {};
+                }
+
+                function buildFocusList(result){
+                    const lang = getSelectedLang();
+                    const help = getHelpText(lang);
+                    const keys = ['cardiology','psychology','pulmonology','dermatology','endocrinology','gastroenterology','general_physician','hematology','nephrology','radiology'];
+                    const items = [];
+                    for (const k of keys){
+                        let source = 'default';
+                        let focus = (help && help[k]) ? help[k] : k.replace(/_/g,' ');
+                        try{
+                            if (result && result[k] && typeof result[k] === 'object' && result[k].focus && String(result[k].focus).trim()){
+                                focus = String(result[k].focus);
+                                source = 'live';
+                            }
+                        }catch(e){}
+                        items.push({ key: k, focus, source });
+                    }
+                    return items;
+                }
+
+                function showHelpPopover(items, anchor){
+                    // remove existing popover
+                    const existing = document.getElementById('help-focus-popover'); if (existing) existing.remove();
+                    const pop = document.createElement('div'); pop.id = 'help-focus-popover';
+                    pop.style.position = 'absolute'; pop.style.right = '12px'; pop.style.top = '62px'; pop.style.width = '360px'; pop.style.maxHeight = '420px'; pop.style.overflow = 'auto'; pop.style.background = '#fff'; pop.style.color = '#111'; pop.style.border = '1px solid #ddd'; pop.style.borderRadius = '8px'; pop.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)'; pop.style.zIndex = '1000'; pop.style.padding = '12px';
+                    const lang = getSelectedLang();
+                    const help = getHelpText(lang) || {};
+                    // Use the short 'Help' label as title (localized) and a subtitle from HELP_TEXT if present
+                    const shortTitle = t('help') || (help.title || 'Agent focuses');
+                    const subtitle = (help && help.title) ? ('<div style="font-size:0.95em;color:#666;margin-bottom:6px">' + escapeHtml(help.title) + '</div>') : '';
+                    pop.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><strong>' + escapeHtml(shortTitle) + '</strong><button id="help-close" style="border:none;background:none;cursor:pointer">✕</button></div>' + subtitle;
+                    const list = document.createElement('div');
+                    items.forEach(it=>{
+                        const row = document.createElement('div'); row.style.padding='6px 0'; row.style.borderBottom='1px solid #f1f1f1';
+                        const name = document.createElement('div'); name.style.fontWeight='600'; name.textContent = it.key.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+                        const f = document.createElement('div'); f.style.fontSize='0.95em'; f.style.color='#444'; f.textContent = it.focus;
+                        const src = document.createElement('div'); src.style.fontSize='0.8em'; src.style.color='#888'; src.style.marginTop='4px'; src.textContent = (it.source === 'live') ? '(Based on last report)' : '(General focus)';
+                        row.appendChild(name); row.appendChild(f); row.appendChild(src); list.appendChild(row);
+                    });
+                    pop.appendChild(list);
+                    document.body.appendChild(pop);
+
+                    // close handlers: button, outside click, and Escape
+                    document.getElementById('help-close').addEventListener('click', ()=> pop.remove());
+                    const outsideHandler = function(e){ if (!pop.contains(e.target) && e.target !== helpBtn) { pop.remove(); document.removeEventListener('click', outsideHandler); document.removeEventListener('keydown', keyHandler); } };
+                    const keyHandler = function(e){ if (e.key === 'Escape') { pop.remove(); document.removeEventListener('click', outsideHandler); document.removeEventListener('keydown', keyHandler); } };
+                    // attach after a tick so the click that opened it doesn't immediately close it
+                    setTimeout(()=>{ document.addEventListener('click', outsideHandler); document.addEventListener('keydown', keyHandler); }, 50);
+                }
+
+                if (helpBtn){
+                    helpBtn.addEventListener('click', function(){
+                        const items = buildFocusList(window.lastAnalyzeResult || window.lastAnalyzeResultGlobal || null);
+                        showHelpPopover(items, helpBtn);
+                    });
+                }
+            })();
+
+            // Upload multiple files and call /api/analyze for each, store structured results
+            doctorUpload.onclick = async function(){
+                const files = (doctorFiles.files || []);
+                if (!files.length) return alert('Select files');
+                const saved = JSON.parse(localStorage.getItem('doctor_cases') || '[]');
+                const indicator = document.getElementById('doctor-analyzing');
+                const uploadBtn = document.getElementById('doctor-upload');
+                try{
+                    if(indicator) indicator.style.display = 'block';
+                    if(uploadBtn) uploadBtn.disabled = true;
+                    for (const f of files){
+                        try{
+                            const fd = new FormData(); fd.append('report', f); fd.append('lang', getSelectedLang());
+                            const res = await fetch('/api/analyze', { method:'POST', body: fd });
+                            if (!res.ok){ const txt = await res.text(); alert('Upload failed for ' + f.name + ': ' + txt.slice(0,200)); continue; }
+                            const j = await res.json();
+                            // Normalize stored object for clearer doctor view
+                            const obj = {
+                                file_name: f.name,
+                                patient_name: j.patient_name || f.name,
+                                report_id: j.report_id || null,
+                                final_report: j.final_report || (typeof j === 'string' ? j : null),
+                                agent_outputs: {
+                                    cardiology: j.cardiology||'',
+                                    psychology: j.psychology||'',
+                                    pulmonology: j.pulmonology||'',
+                                    dermatology: j.dermatology||'',
+                                    endocrinology: j.endocrinology||'',
+                                    gastroenterology: j.gastroenterology||'',
+                                    general_physician: j.general_physician||'',
+                                    hematology: j.hematology||'',
+                                    nephrology: j.nephrology||'',
+                                    radiology: j.radiology||''
+                                },
+                                raw: j
+                            };
+                            saved.push(obj);
+                        }catch(e){ console.error(e); alert('Upload error for ' + f.name + ': ' + String(e)); }
+                    }
+                } finally {
+                    if(indicator) indicator.style.display = 'none';
+                    if(uploadBtn) uploadBtn.disabled = false;
+                    localStorage.setItem('doctor_cases', JSON.stringify(saved));
+                    renderCases();
+                    alert('Uploaded ' + files.length + ' cases (stored locally).');
+                }
+            };
+
+            // Function that requests the combined AI summary and renders it in the separate dashboard
+            async function performDoctorSummary(){
+                const cases = JSON.parse(localStorage.getItem('doctor_cases') || '[]');
+                if (!cases.length) return alert('No cases stored');
+                // hide controls and show the summary dashboard
+                document.getElementById('doctor-controls').style.display = 'none';
+                document.getElementById('doctor-summary-dashboard').style.display = 'block';
+                const contentEl = document.getElementById('doctor-summary-dashboard-content');
+                contentEl.innerHTML = '<div style="color:#666">Generating AI summary... please wait</div>';
+                try {
+                    const payload = { cases: cases.map(c => (typeof c.final_report === 'string' ? c.final_report : (c.final_report?.executive_summary || JSON.stringify(c.final_report || '')))), lang: getSelectedLang() };
+                    const res = await fetch('/doctor/summary', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+                    if (!res.ok){ const t = await res.text(); contentEl.innerHTML = '<div style="color:red">Summary request failed: ' + escapeHtml(t) + '</div>'; return; }
+                    const j = await res.json();
+                    let outHtml = '';
+                    if (j.summary) outHtml += '<h3>Executive Summary</h3><p style="white-space:pre-wrap">' + escapeHtml(String(j.summary)) + '</p>';
+                    if (j.highlights && (Array.isArray(j.highlights) ? j.highlights.length > 0 : String(j.highlights).trim())){
+                        outHtml += '<h3>Highlights</h3><ul>';
+                        const items = Array.isArray(j.highlights) ? j.highlights : String(j.highlights).split('\n');
+                        for (const it of items) if (String(it).trim()) outHtml += '<li>' + escapeHtml(String(it).trim()) + '</li>';
+                        outHtml += '</ul>';
+                    }
+                    if (!outHtml) outHtml = '<pre>' + escapeHtml(JSON.stringify(j, null, 2)) + '</pre>';
+                    contentEl.innerHTML = outHtml;
+                } catch(e){ contentEl.innerHTML = '<div style="color:red">Error: ' + escapeHtml(String(e)) + '</div>'; }
+            }
+
+            document.getElementById('doctor-summary-back').onclick = function(){
+                document.getElementById('doctor-summary-dashboard').style.display = 'none';
+                document.getElementById('doctor-controls').style.display = 'block';
+            };
+            // Header AI Summary button triggers the summary dashboard
+            try {
+                document.getElementById('header-doctor-summary-btn').addEventListener('click', function(){
+                    performDoctorSummary();
+                });
+            } catch(e){}
+        })();
+
+        </script>
+    </main>
+</body>
+</html>

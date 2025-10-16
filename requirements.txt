@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+streamlit
+requests
+PyPDF2
+openai
+python-dotenv
+# Optional OCR support (for PNG/JPEG images):
+# pip install Pillow pytesseract
+# Note: pytesseract requires the Tesseract binary installed on the system (e.g., apt install tesseract-ocr or download for Windows)
