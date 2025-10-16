@@ -1,0 +1,35 @@
+Healthscope Diagnostic Report
+ 
+Executive Summary
+The patient exhibits mild symptoms of hypertension and moderate anxiety. No major organ
+dysfunction detected. The overall condition is stable but requires monitoring.
+Consensus Findings
+1
+Slightly elevated blood pressure (140/90 mmHg).
+2
+Normal ECG and lung function tests.
+3
+Signs of stress and sleep disturbance reported.
+All Conditions
+1
+Hypertension (Stage 1)
+2
+Mild Anxiety
+Recommendations
+1
+Monitor blood pressure daily and maintain a record.
+2
+Engage in 30 minutes of light exercise or yoga daily.
+3
+Limit caffeine and salt intake.
+4
+Consult a psychologist if anxiety persists.
+Next Steps
+1
+Follow up with cardiologist in 2 weeks.
+2
+Recheck BP and anxiety score in 14 days.
+3
+Continue medication as prescribed.
+Disclaimer: This report is generated for demonstration purposes and does not replace professional
+medical advice.

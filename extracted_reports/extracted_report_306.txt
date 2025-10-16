@@ -1,0 +1,5 @@
+﻿Patient Name: John Doe
+Diagnosis: mild anemia
+Hemoglobin: 10.2 g/dL
+WBC: 6000
+Platelets: 250000
