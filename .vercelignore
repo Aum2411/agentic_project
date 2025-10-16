@@ -1,0 +1,11 @@
+# Ignore frontend files
+frontend/
+
+# Ignore local development files
+.venv/
+venv/
+*.pyc
+__pycache__/
+
+# Ignore database and other large files if not needed at build time
+healthscope.db
